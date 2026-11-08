@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Risk &amp; Reward Calculator</title>
+<meta name="theme-color" content="#2748B5">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Risk &amp; Reward">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: one working surface. Inputs on the left, position sizing on the right, price ladder beneath. Stacks to one column on phones. */
+:root {
+  --bg: #EDF0F4;
+  --surface: #FFFFFF;
+  --ink: #14202E;
+  --muted: #5A6A7C;
+  --line: #D6DDE6;
+  --field: #F5F7FA;
+  --accent: #2748B5;
+  --accent-ink: #FFFFFF;
+  --risk: #B93A28;
+  --risk-soft: #F8E3DF;
+  --reward: #0B7A63;
+  --reward-soft: #D9F0EA;
+  --warn: #8A5A00;
+  --warn-soft: #FBF0D5;
+  --font-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1520;
+    --surface: #161F2C;
+    --ink: #E6ECF3;
+    --muted: #93A1B3;
+    --line: #263243;
+    --field: #0F1824;
+    --accent: #86A2FF;
+    --accent-ink: #0E1520;
+    --risk: #FF8A77;
+    --risk-soft: #3A1F1C;
+    --reward: #43D3B0;
+    --reward-soft: #12342D;
+    --warn: #F2C46A;
+    --warn-soft: #382B10;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1520;
+  --surface: #161F2C;
+  --ink: #E6ECF3;
+  --muted: #93A1B3;
+  --line: #263243;
+  --field: #0F1824;
+  --accent: #86A2FF;
+  --accent-ink: #0E1520;
+  --risk: #FF8A77;
+  --risk-soft: #3A1F1C;
+  --reward: #43D3B0;
+  --reward-soft: #12342D;
+  --warn: #F2C46A;
+  --warn-soft: #382B10;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 { margin: 0; font-size: clamp(1.5rem, 1.1rem + 1.8vw, 2.1rem); line-height: 1.15; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; }
+header p { margin: 0; color: var(--muted); max-width: 62ch; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h2 { margin: 0; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+
+.group { display: flex; flex-direction: column; gap: 14px; }
+.group + .group { border-top: 1px solid var(--line); padding-top: 18px; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 420px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
+
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+label { font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+.input { display: flex; align-items: center; background: var(--field); border: 1px solid var(--line); border-radius: 7px; transition: border-color .15s, box-shadow .15s; }
+.input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
+.input span { color: var(--muted); font-family: var(--font-num); font-size: 0.95rem; padding: 0 0 0 12px; user-select: none; }
+.input span.after { padding: 0 12px 0 0; }
+.input input { flex: 1; min-width: 0; width: 100%; border: 0; background: transparent; color: var(--ink); font-family: var(--font-num); font-size: 1.05rem; font-weight: 500; padding: 11px 12px 11px 6px; outline: none; font-variant-numeric: tabular-nums; }
+.input input.pct { padding-left: 12px; padding-right: 4px; }
+.field.stop .input { border-left: 3px solid var(--risk); }
+.field.entry .input { border-left: 3px solid var(--muted); }
+.field.target .input { border-left: 3px solid var(--reward); }
+.hint { font-size: 0.78rem; color: var(--muted); }
+
+.linked { font-size: 0.78rem; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.linked::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); opacity: .7; flex: none; }
+
+.btn { font: inherit; font-size: 0.85rem; font-weight: 600; background: transparent; color: var(--accent); border: 1px solid var(--line); border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+.btn:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+
+/* Results */
+.hero { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-radius: 8px; background: var(--field); border: 1px solid var(--line); }
+.hero .k { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.hero .v { font-family: var(--font-num); font-size: clamp(2.4rem, 2rem + 2vw, 3.2rem); font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.hero .u { font-size: 0.82rem; color: var(--muted); }
+
+dl { margin: 0; display: flex; flex-direction: column; }
+dl .r { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 2px; border-bottom: 1px solid var(--line); }
+dl .r:last-child { border-bottom: 0; }
+dt { color: var(--muted); font-size: 0.92rem; }
+dd { margin: 0; font-family: var(--font-num); font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+dd.risk { color: var(--risk); }
+dd.reward { color: var(--reward); }
+
+.msgs { display: flex; flex-direction: column; gap: 8px; }
+.msg { font-size: 0.86rem; padding: 9px 12px; border-radius: 7px; background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
+.msg.err { background: var(--risk-soft); color: var(--risk); border-color: color-mix(in srgb, var(--risk) 30%, transparent); }
+
+/* Price ladder */
+.pill { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--muted); }
+.pill.long { color: var(--reward); border-color: color-mix(in srgb, var(--reward) 40%, transparent); }
+.pill.short { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 40%, transparent); }
+.ladder { position: relative; height: 120px; margin: 0 6px; }
+.track { position: absolute; left: 0; right: 0; top: 54px; height: 12px; background: var(--field); border: 1px solid var(--line); border-radius: 3px; }
+.seg { position: absolute; top: 54px; height: 12px; }
+.seg.risk { background: var(--risk); opacity: .85; border-radius: 3px 0 0 3px; }
+.seg.reward { background: var(--reward); opacity: .85; border-radius: 0 3px 3px 0; }
+.seg.risk.rev { border-radius: 0 3px 3px 0; }
+.seg.reward.rev { border-radius: 3px 0 0 3px; }
+.tick { position: absolute; width: 2px; background: var(--ink); top: 46px; height: 28px; transform: translateX(-1px); }
+.tag { position: absolute; transform: translateX(-50%); text-align: center; white-space: nowrap; line-height: 1.25; }
+.tag b { display: block; font-family: var(--font-num); font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tag small { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.tag.top { top: 4px; }
+.tag.bottom { top: 82px; }
+.tag.risk b { color: var(--risk); }
+.tag.reward b { color: var(--reward); }
+.legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.82rem; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.empty { color: var(--muted); font-size: 0.9rem; padding: 18px 0; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Risk &amp; Reward Calculator</h1>
+    <p>Set the dollar amount you are willing to lose on a trade. The calculator sizes the position from your entry and stop, then shows what the target pays.</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="in-h">
+      <div class="panel-head">
+        <h2 id="in-h">Trade inputs</h2>
+        <button class="btn" id="reset" type="button">Reset to example</button>
+      </div>
+
+      <div class="group">
+        <div class="field">
+          <label for="balance">Total account balance</label>
+          <div class="input"><span>$</span><input id="balance" inputmode="decimal" autocomplete="off" value="100,000"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label for="riskPct">Risk percentage</label>
+            <div class="input"><input class="pct" id="riskPct" inputmode="decimal" autocomplete="off" value="0.35"><span class="after">%</span></div>
+          </div>
+          <div class="field">
+            <label for="riskAmt">Risk amount</label>
+            <div class="input"><span>$</span><input id="riskAmt" inputmode="decimal" autocomplete="off" value="350"></div>
+          </div>
+        </div>
+        <div class="linked">Risk percentage and risk amount update each other.</div>
+      </div>
+
+      <div class="group">
+        <div class="field entry">
+          <label for="entry">Entry price</label>
+          <div class="input"><span>$</span><input id="entry" inputmode="decimal" autocomplete="off" value="100"></div>
+        </div>
+        <div class="row2">
+          <div class="field stop">
+            <label for="stop">Stop loss price</label>
+            <div class="input"><span>$</span><input id="stop" inputmode="decimal" autocomplete="off" value="95"></div>
+          </div>
+          <div class="field target">
+            <label for="target">Target price</label>
+            <div class="input"><span>$</span><input id="target" inputmode="decimal" autocomplete="off" value="125"></div>
+          </div>
+        </div>
+        <div class="hint">A stop below entry is a long trade. A stop above entry is a short trade.</div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="out-h">
+      <div class="panel-head">
+        <h2 id="out-h">Position</h2>
+      </div>
+      <div class="hero">
+        <span class="k">Shares to buy (Qty)</span>
+        <span class="v" id="qty">—</span>
+        <span class="u" id="qtyNote">&nbsp;</span>
+      </div>
+      <dl>
+        <div class="r"><dt>Total cost</dt><dd id="cost">—</dd></div>
+        <div class="r"><dt>Position size</dt><dd id="size">—</dd></div>
+        <div class="r"><dt>Max risk</dt><dd id="maxRisk" class="risk">—</dd></div>
+        <div class="r"><dt>Potential profit</dt><dd id="profit" class="reward">—</dd></div>
+        <div class="r"><dt>Target R:R</dt><dd id="rr">—</dd></div>
+      </dl>
+      <div class="msgs" id="msgs" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="lad-h">
+    <div class="panel-head">
+      <h2 id="lad-h">Price ladder</h2>
+      <span class="pill" id="dir">—</span>
+    </div>
+    <div id="ladderBox"></div>
+    <div class="legend">
+      <span><i style="background: var(--risk)"></i>Risk per share</span>
+      <span><i style="background: var(--reward)"></i>Reward per share</span>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var EX = { balance: "100,000", riskPct: "0.35", riskAmt: "350", entry: "100", stop: "95", target: "125" };
+  var ids = ["balance", "riskPct", "riskAmt", "entry", "stop", "target"];
+  var el = {};
+  ids.forEach(function (id) { el[id] = document.getElementById(id); });
+  var $ = function (id) { return document.getElementById(id); };
+
+  function parse(v) {
+    var n = parseFloat(String(v).replace(/[,\s$%]/g, ""));
+    return isFinite(n) ? n : NaN;
+  }
+  function round(n, d) { var f = Math.pow(10, d); return Math.round(n * f) / f; }
+  function trim(n, d) { return String(round(n, d)); }
+  function money(n) {
+    var isInt = Math.abs(n - Math.round(n)) < 0.005;
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: isInt ? 0 : 2, maximumFractionDigits: 2 });
+  }
+  function num(n) { return n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+
+  // Linked risk fields
+  function fromBalanceOrPct() {
+    var b = parse(el.balance.value), p = parse(el.riskPct.value);
+    if (isFinite(b) && isFinite(p)) el.riskAmt.value = trim(b * p / 100, 2);
+  }
+  function fromAmount() {
+    var b = parse(el.balance.value), a = parse(el.riskAmt.value);
+    if (isFinite(b) && b > 0 && isFinite(a)) el.riskPct.value = trim(a / b * 100, 4);
+  }
+
+  function msg(text, err) {
+    var d = document.createElement("div");
+    d.className = "msg" + (err ? " err" : "");
+    d.textContent = text;
+    return d;
+  }
+
+  function setResults(r) {
+    $("qty").textContent = r.qty;
+    $("qtyNote").innerHTML = r.qtyNote || "&nbsp;";
+    $("cost").textContent = r.cost;
+    $("size").textContent = r.size;
+    $("maxRisk").textContent = r.maxRisk;
+    $("profit").textContent = r.profit;
+    $("rr").textContent = r.rr;
+  }
+
+  function renderLadder(entry, stop, target, valid) {
+    var box = $("ladderBox");
+    box.innerHTML = "";
+    var pill = $("dir");
+    if (!isFinite(entry) || !isFinite(stop) || !isFinite(target) || entry === stop) {
+      pill.textContent = "—"; pill.className = "pill";
+      var e = document.createElement("div");
+      e.className = "empty";
+      e.textContent = "Enter an entry, a stop that differs from it, and a target to see the ladder.";
+      box.appendChild(e);
+      return;
+    }
+    var long = stop < entry;
+    pill.textContent = long ? "Long" : "Short";
+    pill.className = "pill " + (long ? "long" : "short");
+
+    var lo = Math.min(entry, stop, target), hi = Math.max(entry, stop, target), span = hi - lo;
+    var pos = function (p) { return span === 0 ? 50 : 8 + (p - lo) / span * 84; };
+    var ladder = document.createElement("div");
+    ladder.className = "ladder";
+    var track = document.createElement("div"); track.className = "track"; ladder.appendChild(track);
+
+    function seg(cls, a, b, rev) {
+      var s = document.createElement("div");
+      s.className = "seg " + cls + (rev ? " rev" : "");
+      s.style.left = Math.min(pos(a), pos(b)) + "%";
+      s.style.width = Math.abs(pos(b) - pos(a)) + "%";
+      ladder.appendChild(s);
+    }
+    seg("risk", stop, entry, !long);
+    seg("reward", entry, target, !long);
+
+    function mark(price, label, cls, where) {
+      var t = document.createElement("div"); t.className = "tick"; t.style.left = pos(price) + "%"; ladder.appendChild(t);
+      var g = document.createElement("div");
+      g.className = "tag " + where + " " + cls;
+      g.style.left = pos(price) + "%";
+      var b = document.createElement("b"); b.textContent = money(price);
+      var s = document.createElement("small"); s.textContent = label;
+      if (where === "top") { g.appendChild(s); g.appendChild(b); } else { g.appendChild(b); g.appendChild(s); }
+      ladder.appendChild(g);
+    }
+    mark(entry, "Entry", "", "top");
+    mark(stop, "Stop", "risk", "bottom");
+    mark(target, "Target", valid ? "reward" : "", "bottom");
+    box.appendChild(ladder);
+  }
+
+  function calc() {
+    var bal = parse(el.balance.value), riskAmt = parse(el.riskAmt.value);
+    var entry = parse(el.entry.value), stop = parse(el.stop.value), target = parse(el.target.value);
+    var msgs = $("msgs");
+    msgs.innerHTML = "";
+    var dash = { qty: "—", qtyNote: "", cost: "—", size: "—", maxRisk: "—", profit: "—", rr: "—" };
+
+    if (!(entry > 0) || !(stop > 0)) { setResults(dash); renderLadder(entry, stop, target, false); return; }
+    if (entry === stop) {
+      msgs.appendChild(msg("Stop loss equals entry, so there is no risk per share to size from. Move the stop away from the entry.", true));
+      setResults(dash); renderLadder(entry, stop, target, false); return;
+    }
+    if (!(riskAmt > 0)) { setResults(dash); renderLadder(entry, stop, target, false); return; }
+
+    var long = stop < entry;
+    var rps = Math.abs(entry - stop);
+    var qty = Math.floor(riskAmt / rps * 10000 + 1e-6) / 10000;
+    var cost = qty * entry;
+    var maxRisk = qty * rps;
+
+    var targetOk = isFinite(target) && (long ? target > entry : target < entry);
+    var rewardPS = targetOk ? Math.abs(target - entry) : NaN;
+    var profit = targetOk ? qty * rewardPS : NaN;
+    var rrVal = targetOk ? rewardPS / rps : NaN;
+
+    var out = {
+      qty: qty.toLocaleString("en-US", { maximumFractionDigits: 4 }),
+      qtyNote: money(riskAmt) + " risk ÷ " + money(rps) + " per share",
+      cost: money(cost),
+      size: isFinite(bal) && bal > 0 ? trim(cost / bal * 100, 2) + "%" : "—",
+      maxRisk: money(maxRisk),
+      profit: targetOk ? money(profit) : "—",
+      rr: targetOk ? "1:" + trim(rrVal, 2) : "—"
+    };
+    setResults(out);
+    renderLadder(entry, stop, target, targetOk);
+
+    if (isFinite(target) && !targetOk) {
+      msgs.appendChild(msg(long
+        ? "Target is at or below entry. For a long trade the target must be above entry."
+        : "Target is at or above entry. For a short trade the target must be below entry.", true));
+    }
+    if (isFinite(bal) && bal > 0 && cost > bal) {
+      msgs.appendChild(msg("Total cost of " + money(cost) + " is more than the account balance. This needs margin or a smaller position.", false));
+    }
+    if (!long) {
+      msgs.appendChild(msg("Short trade: quantity is shares to sell short. Total cost is the notional value of the position.", false));
+    }
+  }
+
+  function save() {
+    try { localStorage.setItem("rrc.v1", JSON.stringify({ balance: el.balance.value, riskPct: el.riskPct.value })); } catch (e) {}
+  }
+  function load() {
+    try {
+      var s = JSON.parse(localStorage.getItem("rrc.v1") || "null");
+      if (s && s.balance && s.riskPct) { el.balance.value = s.balance; el.riskPct.value = s.riskPct; fromBalanceOrPct(); }
+    } catch (e) {}
+  }
+
+  el.balance.addEventListener("input", function () { fromBalanceOrPct(); save(); calc(); });
+  el.riskPct.addEventListener("input", function () { fromBalanceOrPct(); save(); calc(); });
+  el.riskAmt.addEventListener("input", function () { fromAmount(); save(); calc(); });
+  ["entry", "stop", "target"].forEach(function (id) { el[id].addEventListener("input", calc); });
+  el.balance.addEventListener("blur", function () {
+    var b = parse(el.balance.value);
+    if (isFinite(b)) el.balance.value = b.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  });
+  $("reset").addEventListener("click", function () {
+    ids.forEach(function (id) { el[id].value = EX[id]; });
+    save(); calc();
+  });
+
+  load();
+  calc();
+})();
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
